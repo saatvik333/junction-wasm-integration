@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	dbm "github.com/cosmos/cosmos-db"
+	"github.com/stretchr/testify/require"
 
 	"cosmossdk.io/log"
 
@@ -18,7 +19,8 @@ func MakeEncodingConfig(t testing.TB) params.EncodingConfig {
 	t.Helper()
 	// we "pre"-instantiate the application for getting the injected/configured encoding configuration
 	// note, this is not necessary when using app wiring, as depinject can be directly used (see root_v2.go)
-	tempApp := App(log.NewNopLogger(), dbm.NewMemDB(), nil, true, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
+	tempApp, err := New(log.NewNopLogger(), dbm.NewMemDB(), nil, true, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
+	require.NoError(t, err)
 	return makeEncodingConfig(tempApp)
 }
 

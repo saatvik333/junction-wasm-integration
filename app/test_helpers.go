@@ -67,7 +67,8 @@ func setup(t testing.TB, chainID string, withGenesis bool, invCheckPeriod uint, 
 	appOptions := make(simtestutil.AppOptionsMap, 0)
 	appOptions[flags.FlagHome] = nodeHome // ensure unique folder
 	appOptions[server.FlagInvCheckPeriod] = invCheckPeriod
-	app := New(log.NewNopLogger(), db, nil, true, appOptions, opts, bam.SetChainID(chainID), bam.SetSnapshot(snapshotStore, snapshottypes.SnapshotOptions{KeepRecent: 2}))
+	app, err := New(log.NewNopLogger(), db, nil, true, appOptions, opts, bam.SetChainID(chainID), bam.SetSnapshot(snapshotStore, snapshottypes.SnapshotOptions{KeepRecent: 2}))
+	require.NoError(t, err)
 	if withGenesis {
 		return app, app.DefaultGenesis()
 	}
@@ -75,7 +76,7 @@ func setup(t testing.TB, chainID string, withGenesis bool, invCheckPeriod uint, 
 }
 
 // NewWasmAppWithCustomOptions initializes a new WasmApp with custom options.
-func NewWasmAppWithCustomOptions(t *testing.T, isCheckTx bool, options SetupOptions) *WasmApp {
+func NewWasmAppWithCustomOptions(t *testing.T, isCheckTx bool, options SetupOptions) *App {
 	t.Helper()
 
 	privVal := mock.NewPV()
@@ -93,7 +94,8 @@ func NewWasmAppWithCustomOptions(t *testing.T, isCheckTx bool, options SetupOpti
 		Coins:   sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdkmath.NewInt(100000000000000))),
 	}
 
-	app := NewWasmApp(options.Logger, options.DB, nil, true, options.AppOpts, options.WasmOpts)
+	app, err := New(options.Logger, options.DB, nil, true, options.AppOpts, options.WasmOpts)
+	require.NoError(t, err)
 	genesisState := app.DefaultGenesis()
 	genesisState, err = GenesisStateWithValSet(app.AppCodec(), genesisState, valSet, []authtypes.GenesisAccount{acc}, balance)
 	require.NoError(t, err)
@@ -117,7 +119,7 @@ func NewWasmAppWithCustomOptions(t *testing.T, isCheckTx bool, options SetupOpti
 }
 
 // Setup initializes a new WasmApp. A Nop logger is set in WasmApp.
-func Setup(t *testing.T, opts ...wasmkeeper.Option) *WasmApp {
+func Setup(t *testing.T, opts ...wasmkeeper.Option) *App {
 	t.Helper()
 
 	privVal := mock.NewPV()
@@ -152,7 +154,7 @@ func SetupWithGenesisValSet(
 	chainID string,
 	opts []wasmkeeper.Option,
 	balances ...banktypes.Balance,
-) *WasmApp {
+) *App {
 	t.Helper()
 
 	app, genesisState := setup(t, chainID, true, 5, opts...)
@@ -186,14 +188,14 @@ func SetupWithGenesisValSet(
 }
 
 // SetupWithEmptyStore set up a wasmd app instance with empty DB
-func SetupWithEmptyStore(t testing.TB) *WasmApp {
+func SetupWithEmptyStore(t testing.TB) *App {
 	app, _ := setup(t, "testing", false, 0)
 	return app
 }
 
 // GenesisStateWithSingleValidator initializes GenesisState with a single validator and genesis accounts
 // that also act as delegators.
-func GenesisStateWithSingleValidator(t *testing.T, app *WasmApp) GenesisState {
+func GenesisStateWithSingleValidator(t *testing.T, app *App) GenesisState {
 	t.Helper()
 
 	privVal := mock.NewPV()
@@ -223,11 +225,11 @@ func GenesisStateWithSingleValidator(t *testing.T, app *WasmApp) GenesisState {
 
 // AddTestAddrsIncremental constructs and returns accNum amount of accounts with an
 // initial balance of accAmt in random order
-func AddTestAddrsIncremental(app *WasmApp, ctx sdk.Context, accNum int, accAmt sdkmath.Int) []sdk.AccAddress {
+func AddTestAddrsIncremental(app *App, ctx sdk.Context, accNum int, accAmt sdkmath.Int) []sdk.AccAddress {
 	return addTestAddrs(app, ctx, accNum, accAmt, simtestutil.CreateIncrementalAccounts)
 }
 
-func addTestAddrs(app *WasmApp, ctx sdk.Context, accNum int, accAmt sdkmath.Int, strategy simtestutil.GenerateAccountStrategy) []sdk.AccAddress {
+func addTestAddrs(app *App, ctx sdk.Context, accNum int, accAmt sdkmath.Int, strategy simtestutil.GenerateAccountStrategy) []sdk.AccAddress {
 	testAddrs := strategy(accNum)
 	bondDenom, err := app.StakingKeeper.BondDenom(ctx)
 	if err != nil {
@@ -243,7 +245,7 @@ func addTestAddrs(app *WasmApp, ctx sdk.Context, accNum int, accAmt sdkmath.Int,
 	return testAddrs
 }
 
-func initAccountWithCoins(app *WasmApp, ctx sdk.Context, addr sdk.AccAddress, coins sdk.Coins) {
+func initAccountWithCoins(app *App, ctx sdk.Context, addr sdk.AccAddress, coins sdk.Coins) {
 	err := app.BankKeeper.MintCoins(ctx, minttypes.ModuleName, coins)
 	if err != nil {
 		panic(err)
@@ -265,9 +267,13 @@ func NewTestNetworkFixture() network.TestFixture {
 	}
 	defer os.RemoveAll(dir)
 
-	app := NewWasmApp(log.NewNopLogger(), dbm.NewMemDB(), nil, true, simtestutil.NewAppOptionsWithFlagHome(dir), emptyWasmOptions)
+	app, err := New(log.NewNopLogger(), dbm.NewMemDB(), nil, true, simtestutil.NewAppOptionsWithFlagHome(dir), emptyWasmOptions)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create app: %v", err))
+	}
+	// require.NoError(&testing.B{}, err)
 	appCtr := func(val network.ValidatorI) servertypes.Application {
-		return NewWasmApp(
+		app, err := New(
 			val.GetCtx().Logger, dbm.NewMemDB(), nil, true,
 			simtestutil.NewAppOptionsWithFlagHome(val.GetCtx().Config.RootDir),
 			emptyWasmOptions,
@@ -275,6 +281,10 @@ func NewTestNetworkFixture() network.TestFixture {
 			bam.SetMinGasPrices(val.GetAppConfig().MinGasPrices),
 			bam.SetChainID(val.GetCtx().Viper.GetString(flags.FlagChainID)),
 		)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create app: %v", err))
+		}
+		return app
 	}
 
 	return network.TestFixture{

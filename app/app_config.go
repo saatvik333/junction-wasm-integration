@@ -59,6 +59,9 @@ import (
 	junctionmoduletypes "github.com/airchains-network/junction/x/junction/types"
 	_ "github.com/airchains-network/junction/x/trackgate/module" // import for side-effects
 	trackgatemoduletypes "github.com/airchains-network/junction/x/trackgate/types"
+	wasmmodulev1 "github.com/airchains-network/junction/api/junction/wasm/module"
+	_ "github.com/airchains-network/junction/x/wasm" // import for side-effects
+	wasmtypes "github.com/airchains-network/junction/x/wasm/types"
 	// this line is used by starport scaffolding # stargate/app/moduleImport
 )
 
@@ -99,6 +102,7 @@ var (
 		// chain modules
 		junctionmoduletypes.ModuleName,
 		trackgatemoduletypes.ModuleName,
+		wasmtypes.ModuleName,
 		// this line is used by starport scaffolding # stargate/app/initGenesis
 	}
 
@@ -125,6 +129,7 @@ var (
 		// chain modules
 		junctionmoduletypes.ModuleName,
 		trackgatemoduletypes.ModuleName,
+		wasmtypes.ModuleName,
 		// this line is used by starport scaffolding # stargate/app/beginBlockers
 	}
 
@@ -145,6 +150,7 @@ var (
 		// chain modules
 		junctionmoduletypes.ModuleName,
 		trackgatemoduletypes.ModuleName,
+		wasmtypes.ModuleName,
 		// this line is used by starport scaffolding # stargate/app/endBlockers
 	}
 
@@ -166,6 +172,7 @@ var (
 		{Account: ibcfeetypes.ModuleName},
 		{Account: icatypes.ModuleName},
 		{Account: trackgatemoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}},
+		{Account: wasmtypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}},
 		// this line is used by starport scaffolding # stargate/app/maccPerms
 	}
 
@@ -308,6 +315,10 @@ var (
 			{
 				Name:   trackgatemoduletypes.ModuleName,
 				Config: appconfig.WrapAny(&trackgatemodulev1.Module{}),
+			},
+			{
+				Name:   wasmtypes.ModuleName,
+				Config: appconfig.WrapAny(&wasmmodulev1.Module{}),
 			},
 			// this line is used by starport scaffolding # stargate/app/moduleConfig
 		},

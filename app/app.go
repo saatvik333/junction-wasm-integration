@@ -101,6 +101,7 @@ import (
 
 	junctionmodulekeeper "github.com/airchains-network/junction/x/junction/keeper"
 	trackgatemodulekeeper "github.com/airchains-network/junction/x/trackgate/keeper"
+	"github.com/airchains-network/junction/x/wasm"
 	wasmkeeper "github.com/airchains-network/junction/x/wasm/keeper"
 	wasmtypes "github.com/airchains-network/junction/x/wasm/types"
 
@@ -241,6 +242,10 @@ func New(
 	wasmOpts []wasmkeeper.Option,
 	baseAppOptions ...func(*baseapp.BaseApp),
 ) (*App, error) {
+	// homePath := cast.ToString(appOpts.Get(flags.FlagHome))
+	// wasmDir := filepath.Join(homePath, "wasm")
+	wasmConfig, err := wasm.ReadWasmConfig(appOpts)
+
 	var (
 		app        = &App{}
 		appBuilder *runtime.AppBuilder
@@ -480,6 +485,12 @@ func New(
 	// 	app.UpgradeKeeper.SetModuleVersionMap(ctx, app.ModuleManager.GetVersionMap())
 	// 	return app.App.InitChainer(ctx, req)
 	// })
+
+	/*
+		Custom codes for the anteHandler and postHandler
+	*/
+	app.setAnteHandler(app.txConfig, wasmConfig, app.GetKey(authtypes.FeeCollectorName))
+	app.setPostHandler()
 
 	if err := app.Load(loadLatest); err != nil {
 		return nil, err
