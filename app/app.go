@@ -2,11 +2,14 @@ package app
 
 import (
 	"context"
+	"cosmossdk.io/collections"
+	"cosmossdk.io/core/store"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 
 	upgradetypes "cosmossdk.io/x/upgrade/types"
@@ -151,18 +154,18 @@ type App struct {
 	StakingKeeper         *stakingkeeper.Keeper
 	DistrKeeper           distrkeeper.Keeper
 	ConsensusParamsKeeper consensuskeeper.Keeper
-	SlashingKeeper       slashingkeeper.Keeper
-	MintKeeper           mintkeeper.Keeper
-	GovKeeper            *govkeeper.Keeper
-	CrisisKeeper         *crisiskeeper.Keeper
-	UpgradeKeeper        *upgradekeeper.Keeper
-	ParamsKeeper         paramskeeper.Keeper
-	AuthzKeeper          authzkeeper.Keeper
-	EvidenceKeeper       evidencekeeper.Keeper
-	FeeGrantKeeper       feegrantkeeper.Keeper
-	GroupKeeper          groupkeeper.Keeper
-	NFTKeeper            nftkeeper.Keeper
-	CircuitBreakerKeeper circuitkeeper.Keeper
+	SlashingKeeper        slashingkeeper.Keeper
+	MintKeeper            mintkeeper.Keeper
+	GovKeeper             *govkeeper.Keeper
+	CrisisKeeper          *crisiskeeper.Keeper
+	UpgradeKeeper         *upgradekeeper.Keeper
+	ParamsKeeper          paramskeeper.Keeper
+	AuthzKeeper           authzkeeper.Keeper
+	EvidenceKeeper        evidencekeeper.Keeper
+	FeeGrantKeeper        feegrantkeeper.Keeper
+	GroupKeeper           groupkeeper.Keeper
+	NFTKeeper             nftkeeper.Keeper
+	CircuitBreakerKeeper  circuitkeeper.Keeper
 
 	// IBC
 	IBCKeeper           *ibckeeper.Keeper // IBC Keeper must be a pointer in the app, so we can SetRouter on it correctly
@@ -179,11 +182,10 @@ type App struct {
 	ScopedICAHostKeeper       capabilitykeeper.ScopedKeeper
 	ScopedWasmKeeper          capabilitykeeper.ScopedKeeper
 
-	JunctionKeeper  junctionmodulekeeper.Keeper
-	TrackgateKeeper trackgatemodulekeeper.Keeper
-	WasmKeeper      wasmkeeper.Keeper
+	JunctionKeeper     junctionmodulekeeper.Keeper
+	TrackgateKeeper    trackgatemodulekeeper.Keeper
+	WasmKeeper         wasmkeeper.Keeper
 	BasicModuleManager module.BasicManager
-
 
 	configurator module.Configurator
 
@@ -215,12 +217,48 @@ func getGovProposalHandlers() []govclient.ProposalHandler {
 	return govProposalHandlers
 }
 
+func ProvideWasmKeeper(
+	storeService store.KVStoreService,
+	cdc codec.Codec,
+	accountKeeper wasmtypes.AccountKeeper,
+	bank wasmkeeper.CoinTransferrer,
+	portKeeper wasmtypes.PortKeeper,
+	capabilityKeeper wasmtypes.CapabilityKeeper,
+	wasmVM wasmtypes.WasmEngine,
+	messenger wasmkeeper.Messenger,
+	logger log.Logger,
+	gasRegister wasmtypes.GasRegister,
+	params collections.Item[wasmtypes.Params],
+) wasmkeeper.Keeper {
+	return wasmkeeper.Keeper{
+		StoreService:              storeService,
+		Cdc:                       cdc,
+		AccountKeeper:             accountKeeper,
+		Bank:                      bank,
+		PortKeeper:                portKeeper,
+		CapabilityKeeper:          capabilityKeeper,
+		WasmVM:                    wasmVM,
+		Messenger:                 messenger,
+		Logger:                    logger,
+		QueryGasLimit:             1000000, // Example gas limit
+		GasRegister:               gasRegister,
+		MaxQueryStackSize:         32, // Example stack size
+		Params:                    params,
+		AcceptedAccountTypes:      make(map[reflect.Type]struct{}),
+		PropagateGovAuthorization: map[wasmtypes.AuthorizationPolicyAction]struct{}{},
+		Authority:                 "gov-authority", // Replace with your actual authority
+	}
+}
+
 // AppConfig returns the default app config.
 func AppConfig() depinject.Config {
 	return depinject.Configs(
 		appConfig,
 		// Loads the app config from a YAML file.
 		// appconfig.LoadYAML(AppConfigYAML),
+		depinject.Provide(
+			ProvideWasmKeeper,
+		),
 		depinject.Supply(
 			// supply custom module basics
 			map[string]module.AppModuleBasic{
@@ -333,7 +371,6 @@ func New(
 		&app.CircuitBreakerKeeper,
 		&app.JunctionKeeper,
 		&app.TrackgateKeeper,
-		&app.WasmKeeper,
 		// this line is used by starport scaffolding # stargate/app/keeperDefinition
 	); err != nil {
 		panic(err)
@@ -619,7 +656,6 @@ func BlockedAddresses() map[string]bool {
 	return result
 }
 
-
 // TxConfig returns WasmApp's TxConfig
 func (app *App) TxConfig() client.TxConfig {
 	return app.txConfig
@@ -701,7 +737,7 @@ func (app *App) LoadHeight(height int64) error {
 
 // InterfaceRegistry returns WasmApp's InterfaceRegistry
 func (app *App) InterfaceRegistry() codectypes.InterfaceRegistry {
-		return app.interfaceRegistry
+	return app.interfaceRegistry
 }
 
 // AutoCliOpts returns the autocli options for the app.

@@ -39,24 +39,24 @@ func NewKeeper(
 ) Keeper {
 	sb := collections.NewSchemaBuilder(storeService)
 	keeper := &Keeper{
-		storeService:         storeService,
-		cdc:                  cdc,
-		wasmVM:               nil,
-		accountKeeper:        accountKeeper,
-		bank:                 NewBankCoinTransferrer(bankKeeper),
+		StoreService:         storeService,
+		Cdc:                  cdc,
+		WasmVM:               nil,
+		AccountKeeper:        accountKeeper,
+		Bank:                 NewBankCoinTransferrer(bankKeeper),
 		accountPruner:        NewVestingCoinBurner(bankKeeper),
-		portKeeper:           portKeeper,
-		capabilityKeeper:     capabilityKeeper,
-		messenger:            NewDefaultMessageHandler(router, ics4Wrapper, channelKeeper, capabilityKeeper, bankKeeper, cdc, portSource),
-		queryGasLimit:        wasmConfig.SmartQueryGasLimit,
-		gasRegister:          types.NewDefaultWasmGasRegister(),
-		maxQueryStackSize:    types.DefaultMaxQueryStackSize,
-		acceptedAccountTypes: defaultAcceptedAccountTypes,
-		params:               collections.NewItem(sb, types.ParamsKey, "params", codec.CollValue[types.Params](cdc)),
-		propagateGovAuthorization: map[types.AuthorizationPolicyAction]struct{}{
+		PortKeeper:           portKeeper,
+		CapabilityKeeper:     capabilityKeeper,
+		Messenger:            NewDefaultMessageHandler(router, ics4Wrapper, channelKeeper, capabilityKeeper, bankKeeper, cdc, portSource),
+		QueryGasLimit:        wasmConfig.SmartQueryGasLimit,
+		GasRegister:          types.NewDefaultWasmGasRegister(),
+		MaxQueryStackSize:    types.DefaultMaxQueryStackSize,
+		AcceptedAccountTypes: defaultAcceptedAccountTypes,
+		Params:               collections.NewItem(sb, types.ParamsKey, "params", codec.CollValue[types.Params](cdc)),
+		PropagateGovAuthorization: map[types.AuthorizationPolicyAction]struct{}{
 			types.AuthZActionInstantiate: {},
 		},
-		authority: authority,
+		Authority: authority,
 	}
 	keeper.wasmVMQueryHandler = DefaultQueryPlugins(bankKeeper, stakingKeeper, distrKeeper, channelKeeper, keeper)
 	preOpts, postOpts := splitOpts(opts)
@@ -65,9 +65,9 @@ func NewKeeper(
 	}
 	// only set the wasmvm if no one set this in the options
 	// NewVM does a lot, so better not to create it and silently drop it.
-	if keeper.wasmVM == nil {
+	if keeper.WasmVM == nil {
 		var err error
-		keeper.wasmVM, err = wasmvm.NewVM(filepath.Join(homeDir, "wasm"), availableCapabilities, contractMemoryLimit, wasmConfig.ContractDebugMode, wasmConfig.MemoryCacheSize)
+		keeper.WasmVM, err = wasmvm.NewVM(filepath.Join(homeDir, "wasm"), availableCapabilities, contractMemoryLimit, wasmConfig.ContractDebugMode, wasmConfig.MemoryCacheSize)
 		if err != nil {
 			panic(err)
 		}
@@ -77,6 +77,6 @@ func NewKeeper(
 		o.apply(keeper)
 	}
 	// not updatable, yet
-	keeper.wasmVMResponseHandler = NewDefaultWasmVMContractResponseHandler(NewMessageDispatcher(keeper.messenger, keeper))
+	keeper.wasmVMResponseHandler = NewDefaultWasmVMContractResponseHandler(NewMessageDispatcher(keeper.Messenger, keeper))
 	return *keeper
 }

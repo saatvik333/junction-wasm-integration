@@ -28,14 +28,14 @@ func (f postOptsFn) apply(keeper *Keeper) {
 // given one.
 func WithWasmEngine(x types.WasmEngine) Option {
 	return optsFn(func(k *Keeper) {
-		k.wasmVM = x
+		k.WasmVM = x
 	})
 }
 
 // WithWasmEngineDecorator is an optional constructor parameter to decorate the default wasmVM engine.
 func WithWasmEngineDecorator(d func(old types.WasmEngine) types.WasmEngine) Option {
 	return postOptsFn(func(k *Keeper) {
-		k.wasmVM = d(k.wasmVM)
+		k.WasmVM = d(k.WasmVM)
 	})
 }
 
@@ -43,7 +43,7 @@ func WithWasmEngineDecorator(d func(old types.WasmEngine) types.WasmEngine) Opti
 // This option should not be combined with Option `WithMessageEncoders` or `WithMessageHandlerDecorator`
 func WithMessageHandler(x Messenger) Option {
 	return optsFn(func(k *Keeper) {
-		k.messenger = x
+		k.Messenger = x
 	})
 }
 
@@ -51,7 +51,7 @@ func WithMessageHandler(x Messenger) Option {
 // This option should not be combined with Option `WithMessageEncoders` or `WithMessageHandler`
 func WithMessageHandlerDecorator(d func(old Messenger) Messenger) Option {
 	return postOptsFn(func(k *Keeper) {
-		k.messenger = d(k.messenger)
+		k.Messenger = d(k.Messenger)
 	})
 }
 
@@ -87,9 +87,9 @@ func WithQueryPlugins(x *QueryPlugins) Option {
 // This option expects the `DefaultMessageHandler` set and should not be combined with Option `WithMessageHandler` or `WithMessageHandlerDecorator`.
 func WithMessageEncoders(x *MessageEncoders) Option {
 	return optsFn(func(k *Keeper) {
-		q, ok := k.messenger.(*MessageHandlerChain)
+		q, ok := k.Messenger.(*MessageHandlerChain)
 		if !ok {
-			panic(fmt.Sprintf("Unsupported message handler type: %T", k.messenger))
+			panic(fmt.Sprintf("Unsupported message handler type: %T", k.Messenger))
 		}
 		s, ok := q.handlers[0].(SDKMessageHandler)
 		if !ok {
@@ -110,7 +110,7 @@ func WithCoinTransferrer(x CoinTransferrer) Option {
 		panic("must not be nil")
 	}
 	return optsFn(func(k *Keeper) {
-		k.bank = x
+		k.Bank = x
 	})
 }
 
@@ -127,7 +127,7 @@ func WithAccountPruner(x AccountPruner) Option {
 
 func WithVMCacheMetrics(r prometheus.Registerer) Option {
 	return postOptsFn(func(k *Keeper) {
-		NewWasmVMMetricsCollector(k.wasmVM).Register(r)
+		NewWasmVMMetricsCollector(k.WasmVM).Register(r)
 	})
 }
 
@@ -139,7 +139,7 @@ func WithGasRegister(x types.GasRegister) Option {
 		panic("must not be nil")
 	}
 	return optsFn(func(k *Keeper) {
-		k.gasRegister = x
+		k.GasRegister = x
 	})
 }
 
@@ -154,7 +154,7 @@ func WithAPICosts(human, canonical uint64) Option {
 // WithMaxQueryStackSize overwrites the default limit for maximum query stacks
 func WithMaxQueryStackSize(m uint32) Option {
 	return optsFn(func(k *Keeper) {
-		k.maxQueryStackSize = m
+		k.MaxQueryStackSize = m
 	})
 }
 
@@ -165,7 +165,7 @@ func WithMaxQueryStackSize(m uint32) Option {
 func WithAcceptedAccountTypesOnContractInstantiation(accts ...sdk.AccountI) Option {
 	m := asTypeMap(accts)
 	return optsFn(func(k *Keeper) {
-		k.acceptedAccountTypes = m
+		k.AcceptedAccountTypes = m
 	})
 }
 
@@ -179,7 +179,7 @@ func WitGovSubMsgAuthZPropagated(entries ...types.AuthorizationPolicyAction) Opt
 		panic(fmt.Sprintf("duplicates in %#v", entries))
 	}
 	return optsFn(func(k *Keeper) {
-		k.propagateGovAuthorization = x
+		k.PropagateGovAuthorization = x
 	})
 }
 

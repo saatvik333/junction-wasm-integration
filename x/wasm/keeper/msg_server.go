@@ -419,7 +419,7 @@ func contains[T comparable](src []T, o T) bool {
 
 func (m msgServer) selectAuthorizationPolicy(ctx context.Context, actor string) types.AuthorizationPolicy {
 	if actor == m.keeper.GetAuthority() {
-		return newGovAuthorizationPolicy(m.keeper.propagateGovAuthorization)
+		return newGovAuthorizationPolicy(m.keeper.PropagateGovAuthorization)
 	}
 	if policy, ok := types.SubMsgAuthzPolicy(ctx); ok {
 		return policy
